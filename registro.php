@@ -1,5 +1,6 @@
 <?php
 include("includes/conexion.php");
+session_start();
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim($_POST["username"]);
@@ -14,59 +15,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if ($checkResult->num_rows > 0) {
         // Nombre de usuario ya existe
-        echo "<p>Error: El nombre de usuario ya está en uso.</p>";
+        $_SESSION['message'] = "El nombre de usuario ya está en uso. Intenta con otro.";
     } else {
         // Si el nombre de usuario no existe, proceder con el registro
-        $query = "INSERT INTO usuarios (username, password, role) VALUES (?, ?, 'admin')"; // Establecer rol como admin
+        $query = "INSERT INTO usuarios (username, password, role) VALUES (?, ?, 'user')";
         $stmt = $conn->prepare($query);
         
-        // Verifica si la preparación fue exitosa
         if ($stmt) {
             $stmt->bind_param("ss", $username, $password);
             
             if ($stmt->execute()) {
-                // Redirigir a index.php después de un registro exitoso
+                $_SESSION['message'] = "Registro exitoso. ¡Bienvenido!";
                 header("Location: index.php");
-                exit(); // Asegúrate de usar exit después de header
+                exit();
             } else {
-                echo "<p>Error al registrar usuario. Intente nuevamente.</p>";
+                $_SESSION['message'] = "Error al registrar el usuario. Inténtalo de nuevo.";
             }
-        } else {
-            echo "<p>Error en la preparación de la consulta.</p>";
         }
     }
 
-    // Cerrar sentencias
     $checkStmt->close();
     if (isset($stmt)) {
         $stmt->close();
     }
 }
 
-// Cerrar conexión
 $conn->close();
+header("Location: index.php");
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Registro</title>
-    <link rel="stylesheet" href="css/estilos.css">
-</head>
-<body>
-    <section id="registro" class="section">
-        <h2>Registro</h2>
-        <form action="registro.php" method="POST">
-            <label for="username">Nombre de Usuario:</label>
-            <input type="text" id="username" name="username" required>
-            
-            <label for="password">Contraseña:</label>
-            <input type="password" id="password" name="password" required>
-            
-            <button type="submit">Registrarse</button>
-        </form>
-    </section>
-</body>
-</html>
-

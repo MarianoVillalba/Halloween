@@ -8,6 +8,7 @@ if (!isset($_SESSION['username'])) {
 }
 
 include("includes/conexion.php");
+$mensaje = ""; // Variable para almacenar mensajes de notificación
 
 // Procesar la eliminación de un disfraz
 if (isset($_POST['eliminar'])) {
@@ -16,6 +17,7 @@ if (isset($_POST['eliminar'])) {
     $stmt = $conn->prepare($deleteQuery);
     $stmt->bind_param("i", $id_disfraz);
     $stmt->execute();
+    $mensaje = "Disfraz eliminado correctamente."; // Mensaje de éxito
 }
 
 // Procesar la adición de un nuevo disfraz
@@ -33,6 +35,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['agregar'])) {
     $stmt = $conn->prepare($insertQuery);
     $stmt->bind_param("sss", $nombre, $descripcion, $targetFile);
     $stmt->execute();
+    $mensaje = "Disfraz agregado correctamente."; // Mensaje de éxito
+}
+
+// Procesar la edición de un disfraz
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['editar'])) {
+    $id_disfraz = $_POST['id_disfraz'];
+    $nombre = $_POST['disfraz-nombre'];
+    $descripcion = $_POST['disfraz-descripcion'];
+
+    // Verificar si se ha subido una nueva foto
+    if (!empty($_FILES['disfraz-foto']['name'])) {
+        $foto = $_FILES['disfraz-foto'];
+        $targetDir = "imagenes/";
+        $targetFile = $targetDir . basename($foto["name"]);
+        move_uploaded_file($foto["tmp_name"], $targetFile);
+        
+        $updateQuery = "UPDATE disfraces SET nombre = ?, descripcion = ?, foto = ? WHERE id = ?";
+        $stmt = $conn->prepare($updateQuery);
+        $stmt->bind_param("sssi", $nombre, $descripcion, $targetFile, $id_disfraz);
+    } else {
+        $updateQuery = "UPDATE disfraces SET nombre = ?, descripcion = ? WHERE id = ?";
+        $stmt = $conn->prepare($updateQuery);
+        $stmt->bind_param("ssi", $nombre, $descripcion, $id_disfraz);
+    }
+    
+    $stmt->execute();
+    $mensaje = "Disfraz editado correctamente."; // Mensaje de éxito
 }
 
 // Consulta para obtener los disfraces de la base de datos
@@ -48,16 +77,21 @@ $result = $conn->query($query);
     <link rel="stylesheet" href="css/estilos.css">
 </head>
 <body>
-    <nav>
-        <ul>
-            <li><a href="index.php">Inicio</a></li>
-            <li><a href="logout.php">Cerrar Sesión</a></li>
-        </ul>
-    </nav>
     <header>
-        <h1>Panel de Administración - Disfraces</h1>
+        <nav>
+            <ul>
+                <li><a href="index.php">Inicio</a></li>
+                <li><a href="login.php">Inicio de Sesión</a></li>
+                <li><a href="registro.php">Registro</a></li>
+                <li><a href="logout.php">Cerrar Sesión</a></li>
+            </ul>
+        </nav>
+        <h1>Panel de Administración - Concurso de Disfraces</h1>
     </header>
     <main>
+        <?php if ($mensaje): ?>
+            <div class="mensaje"><?= htmlspecialchars($mensaje); ?></div>
+        <?php endif; ?>
         <section>
             <h2>Agregar Disfraz</h2>
             <form action="admin.php" method="POST" enctype="multipart/form-data">
@@ -82,10 +116,26 @@ $result = $conn->query($query);
                     echo '<h3>' . htmlspecialchars($row['nombre']) . '</h3>';
                     echo '<p>' . htmlspecialchars($row['descripcion']) . '</p>';
                     echo '<img src="' . htmlspecialchars($row['foto']) . '" width="100%">';
+
+                    // Formulario para eliminar disfraz
                     echo '<form action="admin.php" method="POST">';
                     echo '<input type="hidden" name="id_disfraz" value="' . htmlspecialchars($row['id']) . '">';
                     echo '<button type="submit" name="eliminar">Eliminar Disfraz</button>';
                     echo '</form>';
+                    
+                    // Formulario para editar disfraz
+                    echo '<form action="admin.php" method="POST" enctype="multipart/form-data">';
+                    echo '<input type="hidden" name="id_disfraz" value="' . htmlspecialchars($row['id']) . '">';
+                    echo '<label for="disfraz-nombre">Nombre:</label>';
+                    echo '<input type="text" name="disfraz-nombre" value="' . htmlspecialchars($row['nombre']) . '" required>';
+                    echo '<label for="disfraz-descripcion">Descripción:</label>';
+                    echo '<textarea name="disfraz-descripcion" required>' . htmlspecialchars($row['descripcion']) . '</textarea>';
+                    echo '<label for="disfraz-foto">Nueva Foto (opcional):</label>';
+                    echo '<input type="file" name="disfraz-foto">'; // Permitir subir una nueva foto
+
+                    echo '<button type="submit" name="editar">Editar Disfraz</button>';
+                    echo '</form>';
+
                     echo '</div>';
                     echo '<hr>';
                 }

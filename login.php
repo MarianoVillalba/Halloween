@@ -1,35 +1,36 @@
 <?php
-session_start(); // Iniciar la sesión
+session_start();
 include("includes/conexion.php");
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['login-username']);
-    $password = $_POST['login-password'];
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $username = trim($_POST["login-username"]);
+    $password = trim($_POST["login-password"]);
 
-    // Aquí deberías verificar el nombre de usuario en la base de datos
-    $query = "SELECT * FROM usuarios WHERE username = ?"; // Cambiar 'nombre_usuario' a 'username'
+    $query = "SELECT * FROM usuarios WHERE username = ?";
     $stmt = $conn->prepare($query);
     $stmt->bind_param("s", $username);
     $stmt->execute();
     $result = $stmt->get_result();
 
-    if ($result && $result->num_rows > 0) {
+    if ($result->num_rows === 1) {
         $user = $result->fetch_assoc();
-        // Verificar la contraseña
-        if (password_verify($password, $user['password'])) { // Cambiar 'contrasena' a 'password'
-            $_SESSION['username'] = $username; // Guardar el nombre de usuario en la sesión
-            $_SESSION['role'] = $user['role']; // Opcional: guardar el rol en la sesión
-            header("Location: index.php"); // Redirigir a la página principal
+        if (password_verify($password, $user['password'])) {
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['role'] = $user['role'];
+            $_SESSION['message'] = "¡Inicio de sesión exitoso!";
+            header("Location: index.php");
             exit();
         } else {
-            echo '<p>Nombre de usuario o contraseña incorrectos.</p>';
+            $_SESSION['message'] = "Contraseña incorrecta. Inténtalo de nuevo.";
         }
     } else {
-        echo '<p>Nombre de usuario o contraseña incorrectos.</p>';
+        $_SESSION['message'] = "El nombre de usuario no existe.";
     }
 
-    $stmt->close(); // Cerrar la sentencia
+    $stmt->close();
+    $conn->close();
+    header("Location: index.php");
+    exit();
 }
-
-$conn->close(); // Cerrar la conexión
 ?>
